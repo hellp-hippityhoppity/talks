@@ -30,6 +30,7 @@ type Meme struct {
 type MemePostResponse struct {
 	Success bool        `json:"success"`
 	Data    SuccessData `json:"data"`
+	ErrMsg  string      `json:"error_message"`
 }
 
 // SuccessData holds teh links to the meme and the image after a successful call to

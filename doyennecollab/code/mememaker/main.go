@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"github.com/nathj07/talks/doyennecollab/code/mememaker/data"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
-
-	"github.com/nathj07/talks/doyennecollab/code/mememaker/data"
-
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -22,6 +22,8 @@ var (
 	password = flag.String("password", "", "Your password for the api.imgflip.com service")
 	action   = flag.String("action", "GET", "The action to perform against api.imgflip.com")
 	memeID   = flag.Int("meme", 0, "Meme template ID to ue in creating a new meme. Not needed for GET requests")
+	text0 = flag.String("text0", "", "top Line Of TExt fOR yUoR memE")
+	text1 = flag.String("text1", "", "bototom Line Of TExt fOR yUoR memE")
 )
 
 func main() {
@@ -45,13 +47,18 @@ func main() {
 		if *memeID == 0 {
 			err = multierror.Append(err, fmt.Errorf("You must supply a meme template ID"))
 		}
-		if e := err.ErrorOrNil; e != nil {
+		if e := err.ErrorOrNil(); e != nil {
 			log.Fatal(err)
 		}
 		// TODO: Build up post request - this will need more cli args too - see the request struct
 		// plus an output path to write the file to
 	}
-	makeGetRequest()
+
+	if strings.EqualFold(*action, http.MethodGet) {
+		makeGetRequest()
+		return
+	}
+	makePostRequest()
 }
 
 // makeGet request is here as a simple example of how to make a
@@ -87,7 +94,32 @@ func makeGetRequest() {
 // (in the future we may work on displaying the meme, you use
 // os.Exec with the open command if you feel like it)
 func makePostRequest() {
+	values := url.Values{}
 
+	// ignoring errors here for now; need to address that
+	values.Set("template_id", strconv.Itoa(*memeID))
+	values.Set("username", *username)
+	values.Set("password", *password)
+	values.Set("text0", *text0)
+	values.Set("text1", *text1)
+
+	resp, err := http.PostForm("https://api.imgflip.com/caption_image", values)
+	if err != nil {
+		log.Fatalf("unable to post form %v", err)
+	}
+	defer resp.Body.Close()
+	d, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("unable to read body %v", err)
+	}
+
+	memeResp := &data.MemePostResponse{}
+	err = json.Unmarshal(d, memeResp)
+	if err != nil {
+		log.Fatalf("unable to read json %v", err)
+
+	}
+	spew.Dump(memeResp)
 }
 
 // Once the makeRequest is done feel free to improve upon this code, look at using an http client,
